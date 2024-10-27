@@ -35,5 +35,5 @@ out/
 ### VS Code ###
 .vscode/
 # Project exclude paths
-/gradle/
-/src/
+#/gradle/
+#/src/
