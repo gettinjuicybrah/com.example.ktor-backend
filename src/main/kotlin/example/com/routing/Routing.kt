@@ -1,8 +1,4 @@
 package example.com.routing
-
-import example.com.service.JwtService
-import example.com.service.NoteService
-import example.com.service.UserService
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.routing.*
@@ -41,17 +37,14 @@ REQUEST TYPES:
  * @param noteService Service for note-related operations
  */
 fun Application.configureRouting(
-    jwtService: JwtService,
-    userService: UserService,
-    noteService: NoteService
 ) {
     routing {
         // Public routes (no authentication required)
-        publicRoutes(jwtService, userService)
+        publicRoutes()
 
         // Protected routes (authentication required)
-        authenticate {
-            privateRoutes(jwtService, noteService)
+        authenticate("jwt") {
+            privateRoutes()
         }
     }
 }

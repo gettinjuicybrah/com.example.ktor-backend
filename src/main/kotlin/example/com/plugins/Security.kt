@@ -1,7 +1,7 @@
 package example.com.plugins
 
 
-import example.com.service.JwtService
+import example.com.service.JWTService
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
@@ -12,26 +12,27 @@ Application class. It's used to configure the security settings for your Ktor ap
 
 e
  */
-fun Application.configureSecurity(
-    jwtService: JwtService
-) {
-    aia
+fun Application.configureSecurity() {
     //Here, we are using ktor's authentication feature
     authentication{
         //Here, we are specifically configuring JWT (JSON Web Token) authentication
-        jwt {
+        jwt("jwt") {
             /*
             This sets the "realm" for the authentication. The realm is the
             string that defines the protected area.
              */
-            realm = jwtService.realm
+            realm = JWTService.realm
 
             /*
             This sets the JWT verifier.
             The verifier is used to check if an incoming JWT is
             valid (correctly signed, not expired, etc.).
+
+            CHECK:
+            TOKEN: SIGNATURE, FORMAT, NOT TAMPEREDWITH
+            ISSUER MATCHES
              */
-            verifier(jwtService.jwtVerifier)
+            verifier(JWTService.jwtVerifier)
             /*
             This is the most important part. For each incoming
             request with a JWT, this function will be called. It takes the
@@ -68,8 +69,13 @@ fun Application.configureSecurity(
             to proceed. The JWTPrincipal is then available in your route handlers for further use
             (like getting the user's ID).
              */
+            //here is just adding additional possible checks - at this point, if we didn't have this,
+            //and the verifier determined the token was valid, then the request would proceed to the route handler.
             validate{
-                    credential -> jwtService.validateAccessToken(credential)
+                    credential -> //JWTService.validateAccessToken(credential)
+                if (credential.payload.audience.contains(JWTService.audience)){
+                    JWTPrincipal(credential.payload)
+                } else null
             }
         }
     }

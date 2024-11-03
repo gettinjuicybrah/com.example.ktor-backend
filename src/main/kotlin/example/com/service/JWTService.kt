@@ -3,10 +3,11 @@ package example.com.service
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
-import example.com.data.repository.RefreshTokenRepository
-import example.com.models.User
+import example.com.main
+import example.com.models.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.jwt.*
+import io.ktor.server.config.*
 import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.util.*
@@ -19,18 +20,14 @@ import java.util.*
  * @property userService Service for user-related operations.
  * @property refreshTokenRepository Repository for storing and retrieving refresh tokens.
  */
-class JwtService(
-    private val application: Application,
-    private val userService: UserService,
-    private val refreshTokenRepository: RefreshTokenRepository
-) {
+object JWTService {
     // SecureRandom instance for generating cryptographically strong random numbers
     private val secureRandom = SecureRandom()
-
+    lateinit var application: Application
     // Configuration properties loaded from the application.conf file
-    private val secret = getConfigProperty("jwt.secret")
-    private val issuer = getConfigProperty("jwt.issuer")
-    private val audience = getConfigProperty("jwt.audience")
+    val secret = getConfigProperty("jwt.secret")
+    val issuer = getConfigProperty("jwt.issuer")
+    val audience = getConfigProperty("jwt.audience")
     val realm = getConfigProperty("jwt.realm")
 
     /**
@@ -50,14 +47,19 @@ class JwtService(
      * @param user The user for whom the token is being created.
      * @return A JWT string representing the access token.
      */
-    fun createAccessToken(user: User): String {
-        return JWT.create()
+    fun createAccessToken(): AccessToken {
+        return AccessToken(JWT.create()
             .withAudience(audience)
             .withIssuer(issuer)
-            .withClaim("username", user.username)
-            .withClaim("userId", user.id.toString())
             .withExpiresAt(Date(System.currentTimeMillis() + 3_600_000)) // 1 hour expiration
-            .sign(Algorithm.HMAC256(secret))
+            .sign(Algorithm.HMAC256(secret)))
+    }
+    fun createRefreshToken(): RefreshToken {
+        return RefreshToken(JWT.create()
+            .withAudience(audience)
+            .withIssuer(issuer)
+            .withExpiresAt(Date(System.currentTimeMillis() + 86_400_000)) // 24 hour expiration
+            .sign(Algorithm.HMAC256(secret)))
     }
     fun calculateAccessTokenExp():Long{
         val currentTime = System.currentTimeMillis()
@@ -69,32 +71,21 @@ class JwtService(
         val refreshTokenExpiration = currentTime + 7 * 24 * 60 * 60 * 1000 // 1 week in milliseconds
         return refreshTokenExpiration
     }
-    /**
-     * Validates an access token.
-     *
-     * @param credential The JWT credential to validate.
-     * @return A JWTPrincipal if the token is valid, null otherwise.
-     */
-    fun validateAccessToken(credential: JWTCredential): JWTPrincipal? {
-        val username = credential.payload.getClaim("username").asString()
-        val user = userService.findByUsername(username)
-        return if (user != null && credential.payload.audience.contains(audience)) {
-            JWTPrincipal(credential.payload)
-        } else null
-    }
+
 
     /**
      * Creates a refresh token for a given user ID.
      *
-     * @param userId The ID of the user for whom the refresh token is being created.
      * @return A string representing the refresh token.
      */
-    fun createRefreshToken(userId: UUID): String {
+    /*
+    fun createRefreshToken(): RefreshToken {
         val token = generateRandomToken()
-        val expiresAt = LocalDateTime.now().plusDays(30) // 30 days expiration
-        refreshTokenRepository.saveRefreshToken(userId, token, expiresAt)
-        return token
+        val expiry = LocalDateTime.now().plusDays(30).toString() // 30 days expiration
+        return RefreshToken(token, expiry)
     }
+
+     */
 
     /**
      * Refreshes an access token using a refresh token.
@@ -102,26 +93,10 @@ class JwtService(
      * @param refreshToken The refresh token to use.
      * @return A new access token if successful, null otherwise.
      */
-    fun refreshAccessToken(refreshToken: String): String? {
-
-        val storedToken = refreshTokenRepository.findByToken(refreshToken)
-        if (storedToken != null && storedToken.expiresAt.isAfter(LocalDateTime.now())) {
-            val user = userService.findById(storedToken.userId)
-            if (user != null) {
-                return createAccessToken(user)
-            }
-        }
-        return null
+    fun getAccessToken(): AccessToken {
+        return createAccessToken()
     }
 
-    /**
-     * Revokes a refresh token.
-     *
-     * @param refreshToken The refresh token to revoke.
-     */
-    fun revokeRefreshToken(refreshToken: String) {
-        refreshTokenRepository.deleteToken(refreshToken)
-    }
 
     /**
      * Extracts the user ID from a JWT principal.

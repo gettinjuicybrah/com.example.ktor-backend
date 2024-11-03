@@ -4,9 +4,12 @@ import java.util.*
 
 data class User(
     //primary key
-    val userIdA: String,
-    val userIdB: String,
+    val id: String,
     val username: String,
     val password: String,
-    val createdAt: String
+    val theme: Boolean
+)
+data class UserAuth(
+    val username: String,
+    val password: String
 )

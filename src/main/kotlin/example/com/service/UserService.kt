@@ -1,12 +1,25 @@
 package example.com.service
 
 import example.com.data.repository.UserRepository
-import example.com.models.User
+import example.com.models.*
+import example.com.routing.response.pub.*
 import java.util.*
 
-class UserService(
-    private val userRepository: UserRepository,
-){
+object UserService{
+
+    fun tryRegister(user: UserAuth):Boolean{
+        return UserRepository.tryRegister(user)
+    }
+
+    fun tryLogin(user: UserAuth):Boolean{
+        return UserRepository.tryLogin(user)
+    }
+
+    fun updateUITheme(user: User):Boolean{
+        return UserRepository.updateUITheme(user)
+    }
+
+    /*
     fun findByUsername(username: String): User? {
         return userRepository.findByUsername(username)
     }
@@ -28,4 +41,6 @@ class UserService(
         val newUser = User(UUID.randomUUID().toString(), UUID.randomUUID().toString(),username, password, )
         return userRepository.createUser(newUser)
     }
+
+     */
 }
